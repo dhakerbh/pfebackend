@@ -40,5 +40,5 @@ def summarize_pdf(path):
         summary =extracted_text 
     else:    
         summary="ERROR : Could'nt find any text "
-    open(f"Summary_{path[:path.find('.')].capitalize()}.txt","w+").write(summary)
+    open(f"{path[:path.find('.')]}.txt","w").write(summary)
     return summary

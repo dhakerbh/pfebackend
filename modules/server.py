@@ -1,19 +1,21 @@
 from flask import Flask,jsonify,request
 from flask_cors import CORS
-from io import BytesIO
 import os
 from werkzeug.utils import secure_filename 
 
 from im_to_txt import get_text_from_image
 from MODULE5 import summarize_video
-UPLOAD_FOLDER = "uploadedData/"
+from MODULE1 import summarize_pdf
+from ai import send_to_ai
+UPLOAD_FOLDER = "modules/uploadedData/"
 
 app = Flask(__name__)
 CORS(app)
 @app.route('/api/summarizetext',methods=['POST']) 
 def return_summary():
-    summary2  = request.get_json()['text']
-    response = jsonify({"message":summary2})
+    text  = request.get_json()['text']
+    summary = send_to_ai(text)
+    response = jsonify({"message":summary})
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 CORS(app)
@@ -46,6 +48,27 @@ def vids_summary():
         return response
     except Exception as e:
         print(f"An error occured {e}")
+        return 'error!'
+
+@app.route('/api/pdfsummarizer',methods=['POST']) 
+def pdf_summary():
+    d = {}
+    try:
+        file = request.files['pdf']
+        filename = secure_filename(file.filename) 
+        print(f"Uploading file {filename}")
+        file.save(UPLOAD_FOLDER+filename)
+        d['status'] = 1
+    except Exception as e:
+        print(f"Couldn't upload file {e}")
+        d['status'] = 0
+    if(d['status']==1):
+        txt = summarize_pdf(os.path.join(UPLOAD_FOLDER, filename))
+        txt = txt.split('\n')
+        return jsonify({"text":txt})
+
+
+
 
 
 

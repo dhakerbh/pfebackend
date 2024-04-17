@@ -19,7 +19,7 @@ def summarize_video(url):
     YOUTUBE_VIDEO_URL = url
     OUTPUT_AUDIO = Path(__file__).resolve().parent.joinpath('data',f'{file_name}.mp3')
     if os.path.exists(OUTPUT_AUDIO):
-        with open(f'data/{file_name}.txt') as f:
+        with open(f'modules/data/{file_name}.txt') as f:
             lines = f.readlines()
             
         return lines 
@@ -28,7 +28,7 @@ def summarize_video(url):
     transcript = model.transcribe(OUTPUT_AUDIO.as_posix())
     transcript = transcript['text']
     summary = summarize_text(transcript)
-    with open(f'data/{file_name}.txt',"w") as f:
+    with open(f'modules/data/{file_name}.txt',"w") as f:
         f.write(summary)
     f.close()
     return summary
