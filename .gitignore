@@ -4,4 +4,6 @@
 *.png
 *.pdf
 /modules/__pycache__
-.gitignore
+/.gitignore
+*.txt
+/testassets

@@ -22,10 +22,11 @@ def summarize_pdf(path):
     ## TEXT PDF manipulation ;)
     if(pdf_type=="TEXT PDF"):
         ##WOOORKS GOOOD "START"
+        print("entered TEXT PDF")
         for page in reader.pages:
-            extracted_page_text += page.extract_text() 
-            extracted_text += extracted_page_text
-            summary += send_to_ai(extracted_page_text)
+            extracted_text += page.extract_text() 
+        summary= send_to_ai(extracted_text)
+        print(summary)
     #SCANNED PDF extraction || pdf is a list of images 
     elif(len(reader.pages)):
         print('Entered ELSE phase \n')

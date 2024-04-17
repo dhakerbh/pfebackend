@@ -67,10 +67,5 @@ def pdf_summary():
         txt = txt.split('\n')
         return jsonify({"text":txt})
 
-
-
-
-
-
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)

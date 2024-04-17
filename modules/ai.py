@@ -3,7 +3,7 @@ import ollama
 
 def send_to_ai(text):
     requested= f"""
-    Generate a concise summary of the text below.
+    Generate a concise , one paragraph summary of the text below.
     Text: {text}
     
     Add a title to the summary.
