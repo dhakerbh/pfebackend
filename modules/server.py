@@ -32,10 +32,19 @@ def return_imextracted():
     except Exception as e:
         print(f"Couldn't upload file {e}")
         d['status'] = 0
+        response = jsonify({"text":"Error Occured , File not Uploaded "})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response
     if(d['status']==1):
         txt = get_text_from_image(os.path.join(UPLOAD_FOLDER, filename))
+        if(txt =="0words-found"):
+            response =  jsonify({"text":"Error Occured , possibly no words found "})
+            response.headers.add("Access-Control-Allow-Origin", "*")
+            return response
         txt = txt.split('\n')
-        return jsonify({"text":txt})
+        response = jsonify({"text":txt})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response
 
 
 @app.route('/api/youtubesummarizer',methods=['POST'])
