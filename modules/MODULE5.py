@@ -18,17 +18,23 @@ def summarize_video(url):
     file_name = url[url.find("?v=")+3: url.find("?v=")+14]
     YOUTUBE_VIDEO_URL = url
     OUTPUT_AUDIO = Path(__file__).resolve().parent.joinpath('data',f'{file_name}.mp3')
-    if os.path.exists(OUTPUT_AUDIO):
-        with open(f'modules/data/{file_name}.txt') as f:
+    OUTPUT_TEXT = Path(__file__).resolve().parent.joinpath('data',f'{file_name}.txt')
+    SUMMARY = Path(__file__).resolve().parent.joinpath('data',f'{file_name}_SUM.txt')
+
+    if os.path.exists(SUMMARY):
+        with open(f'modules/data/{file_name}_SUM.txt') as f:
             lines = f.readlines()
-            
         return lines 
+    elif os.path.exists(OUTPUT_TEXT):
+        summary = summarize_text(transcript)
+        return summary
 
     download_youtube_video(YOUTUBE_VIDEO_URL, OUTPUT_AUDIO)
     transcript = model.transcribe(OUTPUT_AUDIO.as_posix())
     transcript = transcript['text']
+    open(OUTPUT_TEXT,'w').write(transcript)
     summary = summarize_text(transcript)
-    with open(f'modules/data/{file_name}.txt',"w") as f:
+    with open(SUMMARY,"w") as f:
         f.write(summary)
     f.close()
     return summary
