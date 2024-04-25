@@ -28,13 +28,15 @@ def summarize_video(url):
     elif os.path.exists(OUTPUT_TEXT):
         summary = summarize_text(transcript)
         return summary
-
-    download_youtube_video(YOUTUBE_VIDEO_URL, OUTPUT_AUDIO)
+    if( os.path.exists(OUTPUT_AUDIO)):
+        print('MP3 file found , Skipping to transcripting')
+    else:
+        download_youtube_video(YOUTUBE_VIDEO_URL, OUTPUT_AUDIO)
     transcript = model.transcribe(OUTPUT_AUDIO.as_posix())
     transcript = transcript['text']
     open(OUTPUT_TEXT,'w').write(transcript)
     summary = summarize_text(transcript)
-    with open(SUMMARY,"w") as f:
-        f.write(summary)
-    f.close()
+    open(SUMMARY,"w").write(summary)
+    summary = open(SUMMARY,"r").readlines()
+    print(type (summary) , summary)
     return summary
