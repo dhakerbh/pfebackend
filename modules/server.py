@@ -4,6 +4,7 @@ import os
 from werkzeug.utils import secure_filename 
 from pymongo import MongoClient
 from datetime import datetime
+from bson.json_util import dumps
 
 from im_to_txt import get_text_from_image
 from MODULE5 import summarize_video
@@ -141,6 +142,39 @@ def login():
         else:
             response = jsonify({"message":"User not found !"})
     return response , 400
+
+@app.route('/history', methods=['POST'])
+def get_history():
+    class base_row:
+        def __init__(self,email,data,link,module,time) -> None:
+            self.email = email
+            self.data = data
+            self.link = link
+            self.module = module
+            self.time = time
+        def serialize(self):
+            return {
+                'email': self.email, 
+                'data': self.data,
+                'link':link,
+                'module': self.module,
+                'time':self.time,
+            }
+    email = request.get_json()['email']
+    elements = history.find({'email':email})
+    rows = []
+    for element in elements:
+        email = element['email']
+        data = element['data']
+        link = element['link']
+        module = element['module']
+        time = element['time']
+        row =  base_row(email,data,link,module,time)
+        rows.append(row)
+
+    response = jsonify(result=[e.serialize() for e in rows])
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)
