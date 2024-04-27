@@ -5,6 +5,7 @@ from werkzeug.utils import secure_filename
 from pymongo import MongoClient
 from datetime import datetime
 from bson.json_util import dumps
+from bson.objectid import ObjectId
 
 from im_to_txt import get_text_from_image
 from MODULE5 import summarize_video
@@ -146,12 +147,13 @@ def login():
 @app.route('/history', methods=['POST'])
 def get_history():
     class base_row:
-        def __init__(self,email,data,link,module,time) -> None:
+        def __init__(self,email,data,link,module,time,id) -> None:
             self.email = email
             self.data = data
             self.link = link
             self.module = module
             self.time = time
+            self.id = id
         def serialize(self):
             return {
                 'email': self.email, 
@@ -159,6 +161,7 @@ def get_history():
                 'link':self.link,
                 'module': self.module,
                 'time':self.time,
+                'id':self.id,
             }
     email = request.get_json()['email']
     elements = history.find({'email':email})
@@ -169,13 +172,24 @@ def get_history():
         link = element['link']
         module = element['module']
         time = element['time']
-        row =  base_row(email,data,link,module,time)
+        id = str(element['_id'])
+        row =  base_row(email,data,link,module,time,id)
         rows.append(row)
 
     response = jsonify(result=[e.serialize() for e in rows])
-    print('Links =>> ',response)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
+@app.route('/deletehistory',methods=['POST'])
+def delete():
+    id = request.get_json()['id']
+    email = request.get_json()['email']
+    print('id : ', id , 'email : ' , email)
+    if(history.find_one_and_delete({'_id':ObjectId(id),'email':email})):
+        print('Deleted  !! ')
+    else:
+        print('Damn -_--')
+        return 400
+    return jsonify({'hello':'hello'})
 
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)
