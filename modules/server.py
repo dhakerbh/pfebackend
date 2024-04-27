@@ -156,7 +156,7 @@ def get_history():
             return {
                 'email': self.email, 
                 'data': self.data,
-                'link':link,
+                'link':self.link,
                 'module': self.module,
                 'time':self.time,
             }
@@ -173,6 +173,7 @@ def get_history():
         rows.append(row)
 
     response = jsonify(result=[e.serialize() for e in rows])
+    print('Links =>> ',response)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
