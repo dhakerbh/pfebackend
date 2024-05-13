@@ -3,14 +3,18 @@ from flask_cors import CORS
 import os
 from werkzeug.utils import secure_filename 
 from pymongo import MongoClient
-from datetime import datetime
+import datetime
 from bson.json_util import dumps
 from bson.objectid import ObjectId
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from functools import wraps
 
 from im_to_txt import get_text_from_image
 from MODULE5 import summarize_video
 from MODULE1 import summarize_pdf
 from ai import send_to_ai
+
 UPLOAD_FOLDER = "modules/uploadedData/"
 # DB client 
 client = MongoClient('mongodb://localhost:27017/')
@@ -30,6 +34,25 @@ def save_history(email,data,module,link=""):
     print('history saved Successfulyy ! ')
     return 1
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'RA33D'
+
+
+def jwt_required(func):
+    @wraps(func)
+    def decorated_function(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        if not token or not token.startswith('Bearer '):
+            return jsonify({'error': 'Missing or invalid token'}), 401
+
+        try:
+            data = jwt.decode(token.split(' ')[1], app.config['SECRET_KEY'], algorithms=['HS256'])
+        except jwt.DecodeError:
+            return jsonify({'error': 'Invalid token'}), 401
+
+        return func(*args, **kwargs)
+
+    return decorated_function
+
 CORS(app)
 @app.route('/api/summarizetext',methods=['POST']) 
 def return_summary():
@@ -119,6 +142,7 @@ def register():
     password = request.json['password']
 
     finding = users.find_one({'email': email})
+    password=generate_password_hash(password, method='pbkdf2',salt_length=10)
     if(finding is not None):
         response =  jsonify({'message': 'User Already Exists'})
         response.headers.add("Access-Control-Allow-Origin", "*")
@@ -132,16 +156,26 @@ def register():
 def login():
     email = request.json['email']
     password = request.json['password']
-    user = users.find_one({'email': email, 'password': password})
-    if(user is not None):
-        response =  jsonify({'message': 'Logged in Successfully',"profile":str(user.get('fullname'))[0:2]})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response, 200
-    else:
+    user = users.find_one({'email': email})
+    if not user or not check_password_hash(user.get('password'), password) :
         if(users.find_one({"email":email})):
             response = jsonify({"message":"Incorrect Password"})
         else:
             response = jsonify({"message":"User not found !"})
+    else:
+        payload = {
+        'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30),
+        'email': email,
+        "profile":str(user.get('fullname'))[0:2],
+        'iat': datetime.datetime.utcnow().timestamp() 
+    }
+        token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
+
+        response =  jsonify({'message': 'Logged in Successfully',"token":token})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
+   
+        
     return response , 400
 
 @app.route('/history', methods=['POST'])
@@ -193,3 +227,4 @@ def delete():
 
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)
+    print(generate_password_hash())
