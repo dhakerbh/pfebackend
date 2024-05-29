@@ -22,7 +22,7 @@ history = client['Users']['History']
 users = client['Users']['Users']
 
 def save_history(email,data,module,link=""):
-    time = datetime.now()
+    time = datetime.datetime.now()
     if(link):
         if (history.find_one_and_update({'email':email,'link':link},{ '$set': { "time" : time,'data':data} })):
             print('history already found (YT), Only updating time :D ')
@@ -36,24 +36,8 @@ def save_history(email,data,module,link=""):
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'RA33D'
 
+CORS(app, origins=['http://localhost:3000'], supports_credentials=True)
 
-def jwt_required(func):
-    @wraps(func)
-    def decorated_function(*args, **kwargs):
-        token = request.headers.get('Authorization')
-        if not token or not token.startswith('Bearer '):
-            return jsonify({'error': 'Missing or invalid token'}), 401
-
-        try:
-            data = jwt.decode(token.split(' ')[1], app.config['SECRET_KEY'], algorithms=['HS256'])
-        except jwt.DecodeError:
-            return jsonify({'error': 'Invalid token'}), 401
-
-        return func(*args, **kwargs)
-
-    return decorated_function
-
-CORS(app)
 @app.route('/api/summarizetext',methods=['POST']) 
 def return_summary():
     text  = request.get_json()['text']
@@ -66,7 +50,6 @@ def return_summary():
         save_history(email,summary,'Text Summarizer','-')
 
     return response
-CORS(app)
 
 @app.route('/api/imtotxt',methods=['POST']) 
 def return_imextracted():
@@ -148,7 +131,7 @@ def register():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 400
     else:
-        users.insert_one({'fullname': fullname, 'email': email, 'password': password})
+        users.insert_one({'fullname': fullname, 'email': email, 'password': password,'role':"user"})
         response =  jsonify({'message': 'User registered successfully'})
     return response , 200
 
@@ -158,7 +141,7 @@ def login():
     password = request.json['password']
     user = users.find_one({'email': email})
     if not user or not check_password_hash(user.get('password'), password) :
-        if(users.find_one({"email":email})):
+        if(user):
             response = jsonify({"message":"Incorrect Password"})
         else:
             response = jsonify({"message":"User not found !"})
@@ -167,6 +150,7 @@ def login():
         'exp': datetime.datetime.utcnow() + datetime.timedelta(days=30),
         'email': email,
         "profile":str(user.get('fullname'))[0:2],
+        "role":str(user.get('role')),
         'iat': datetime.datetime.utcnow().timestamp() 
     }
         token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
@@ -177,6 +161,7 @@ def login():
    
         
     return response , 400
+CORS(app, origins=['http://localhost:3000'], supports_credentials=True)
 
 @app.route('/history', methods=['POST'])
 def get_history():
@@ -213,6 +198,7 @@ def get_history():
     response = jsonify(result=[e.serialize() for e in rows])
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
+
 @app.route('/deletehistory',methods=['POST'])
 def delete():
     id = request.get_json()['id']
@@ -224,6 +210,104 @@ def delete():
         print('Damn -_--')
         return 400
     return jsonify({'hello':'hello'})
+
+
+@app.route('/users',methods=['GET'])
+def get_users():
+    class base_row:
+        def __init__(self,id,email,fullname,password,role) -> None:
+            self.email = email
+            self.fullname = fullname
+            self.password = password
+            self.role = role
+            self.id = id
+        def serialize(self):
+            return {
+                'email': self.email, 
+                'fullname': self.fullname,
+                'password':self.password,
+                'role': self.role,
+                'id':self.id,
+            }
+    users_list = users.find()
+    rows = []
+    for element in users_list:
+        email = element['email']
+        fullname = element['fullname']
+        password = element['password']
+        role = element['role']
+        id = str(element['_id'])
+        row =  base_row(id,email,fullname,password,role)
+        rows.append(row)
+    response = jsonify(result=[e.serialize() for e in rows])
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+@app.route('/getEmail', methods=['POST'])
+def get_email():
+    id = request.get_json()['id']
+    email = users.find_one({'_id':ObjectId(id)}).get('email')
+    response = jsonify({"email":str(email)})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
+@app.route('/adminhistory', methods=['POST'])
+def get_admin_history():
+    class base_row:
+        def __init__(self,email,data,link,module,time,id) -> None:
+            self.email = email
+            self.data = data
+            self.link = link
+            self.module = module
+            self.time = time
+            self.id = id
+        def serialize(self):
+            return {
+                'email': self.email, 
+                'data': self.data,
+                'link':self.link,
+                'module': self.module,
+                'time':self.time,
+                'id':self.id,
+            }
+    id = request.get_json()['id']
+    email = users.find_one({'_id':ObjectId(id)}).get('email')
+
+    elements = history.find({'email':email})
+    rows = []
+    for element in elements:
+        email = element['email']
+        data = element['data']
+        link = element['link']
+        module = element['module']
+        time = element['time']
+        id = str(element['_id'])
+        row =  base_row(email,data,link,module,time,id)
+        rows.append(row)
+
+    response = jsonify(result=[e.serialize() for e in rows])
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
+@app.route('/user',methods=['POST'])
+def get_user():
+    id = request.get_json()['id']
+    user = users.find_one({'_id':ObjectId(id)})
+    response = jsonify({"id":id,"fullname":user.get('fullname'),"email":user.get('email'),"role":user.get('role'),"isActivated":user.get('isActivated')})
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+@app.route('/edituser',methods=['PUT'])
+def edit_user():
+    received = request.get_json()  
+    id = received['id']
+    print(received)
+    try:
+        users.find_one_and_update({'_id':ObjectId(id)},{ '$set':{"fullname" : received['fullname'],"email" : received['email'],"isActivated" : received['isActivated'],"role" : received['role'],} })
+        response = jsonify({"message":"success"})
+    except:
+        response = jsonify({'message':"error"})
+
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)
