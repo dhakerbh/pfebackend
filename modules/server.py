@@ -9,6 +9,7 @@ from bson.objectid import ObjectId
 from werkzeug.security import generate_password_hash, check_password_hash
 import jwt
 from functools import wraps
+import secrets
 
 from im_to_txt import get_text_from_image
 from MODULE5 import summarize_video
@@ -20,6 +21,8 @@ UPLOAD_FOLDER = "modules/uploadedData/"
 client = MongoClient('mongodb://localhost:27017/')
 history = client['Users']['History']
 users = client['Users']['Users']
+tokens = client['Users']['Tokens']
+
 
 def save_history(email,data,module,link=""):
     time = datetime.datetime.now()
@@ -151,6 +154,7 @@ def login():
         'email': email,
         "profile":str(user.get('fullname'))[0:2],
         "role":str(user.get('role')),
+        'id':str(user.get('_id')),
         'iat': datetime.datetime.utcnow().timestamp() 
     }
         token = jwt.encode(payload, app.config['SECRET_KEY'], algorithm='HS256')
@@ -309,6 +313,49 @@ def edit_user():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+@app.route('/resetrequest',methods=['POST'])
+def reset_request():
+    email = request.get_json()['email']
+    found = tokens.find_one({"email":email})
+    if(users.find_one({"email":email})):
+        if(not found):
+            reset_token=secrets.token_urlsafe(32)
+            tokens.insert_one({"email":email,"token":reset_token})
+        else:
+            reset_token = found.get('token')
+        #send reset_email
+        response = jsonify({"reset":"link sent successfully"})  
+    else:
+        response = jsonify({"reset":"email address not found!"})  
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+@app.route('/verifyreset',methods=['POST'])
+def verify_token():
+    token = request.get_json()['token']
+    found = tokens.find_one({"token":token})
+    if(found):
+        response = jsonify({"verify":"verified successfully"}) 
+    else:
+        response = jsonify({"verify":"Not verified"}),415 
+    #send reset_email
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+"""
+STILL WORKING ON IT CHANGE PASSWORD!!
+
+
+"""
+@app.route('/changepassword',methods=['PUT'])
+def change_password():
+    token = request.get_json()['token']
+    found = tokens.find_one({"token":token})
+    if(found):
+        response = jsonify({"verify":"verified successfully"}) 
+    else:
+        response = jsonify({"verify":"Not verified"}),415 
+    #send reset_email
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
 if( __name__ == "__main__"):
     app.run(debug=True,port=8080)
     print(generate_password_hash())
