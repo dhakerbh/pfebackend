@@ -134,7 +134,9 @@ def register():
         response.headers.add("Access-Control-Allow-Origin", "*")
         return response, 400
     else:
-        users.insert_one({'fullname': fullname, 'email': email, 'password': password,'role':"user"})
+        users.insert_one({'fullname': fullname, 'email': email, 'password': password,'role':"user","isActivated":False})
+        verify_token=secrets.token_urlsafe(32)
+        tokens.insert_one({"email":email,"token":verify_token})
         response =  jsonify({'message': 'User registered successfully'})
     return response , 200
 
@@ -340,20 +342,36 @@ def verify_token():
     #send reset_email
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
-"""
-STILL WORKING ON IT CHANGE PASSWORD!!
-
-
-"""
 @app.route('/changepassword',methods=['PUT'])
 def change_password():
     token = request.get_json()['token']
+    password = request.get_json()['password']
     found = tokens.find_one({"token":token})
+    if(not password or  len(password)< 6):  
+        response = jsonify({"message":"password length must be over 6 letters"}) 
+    else:
+        if(found):
+            email = found.get('email')
+            hashed_password=generate_password_hash(password, method='pbkdf2',salt_length=10)
+            users.find_one_and_update({'email':email,},{ '$set': { "password" : hashed_password} })
+            tokens.find_one_and_delete({"token":token})
+            response = jsonify({"message":"updated successfully"}) 
+        else:
+            response = jsonify({"message":"Error while updating password"}),415 
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+@app.route('/verifyaccount',methods=['POST'])
+def verify_account_token():
+    token = request.get_json()['token']
+    found = tokens.find_one({"token":token})
+    email = found.get('email')
+
     if(found):
+        users.find_one_and_update({'email':email},{"$set":{"isActivated":True}})
+        tokens.find_one_and_delete({"token":token})
         response = jsonify({"verify":"verified successfully"}) 
     else:
         response = jsonify({"verify":"Not verified"}),415 
-    #send reset_email
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 if( __name__ == "__main__"):
